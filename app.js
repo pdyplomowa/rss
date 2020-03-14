@@ -3,6 +3,7 @@ const path = require('path');
 const mongoose = require('mongoose');
 const dotenv = require('dotenv');
 const sgMail = require('@sendgrid/mail');
+const Parser = require('rss-parser');
 
 dotenv.config();
 mongoose.Promise = global.Promise;
@@ -41,12 +42,73 @@ app.use(express.json());
 app.set('views', path.join(__dirname, 'views'))
 app.set('view engine', 'hbs')
 
+function feedToHtml(feed) {
+  const placeholder = '[empty]';
+  return `
+    <div>
+      <strong>Feed url</strong>
+      <a href="${feed.feedUrl || ''}">${feed.feedUrl || placeholder}</a>
+    </div>
+    <div>
+      <strong>Title</strong>
+      <span>${feed.title || placeholder}</span>
+    </div>
+    <div>
+      <strong>Description</strong>
+      <span>${feed.description || placeholder}</span>
+    </div>
+    <div>
+      <strong>Link</strong>
+      <a href="${feed.link || ''}">${feed.link || placeholder}</a>
+    </div>
+    <div>
+      <strong>Items</strong>
+      <ul>
+        ${feed.items.map((item) => `
+          <li>
+            <div>
+              <strong>Title</strong>
+              <span>${item.title || placeholder}</span>
+            </div>
+            <div>
+              <strong>Link</strong>
+              <a href="${item.link || ''}">${item.link || placeholder}</a>
+            </div>
+            <div>
+              <strong>Date</strong>
+              <span>${item.pubDate || placeholder}</span>
+            </div>
+            <div>
+              <strong>Creator</strong>
+              <span>${item.creator || placeholder}</span>
+            </div>
+            <div>
+              <strong>Content</strong>
+              <span>${item.content || placeholder}</span>
+            </div>
+            <div>
+              <strong>Categories</strong>
+              <span>${item.categories || placeholder}</span>
+            </div>
+          </li>
+        `)}
+      </ul>
+    </div>
+    <hr>
+  `;
+}
+
 app.get('/', async (req, res) => {
   // const urls = await Url.find({}).exec();
   // const [email] = await Email.find({}).exec();
   const urls = [];
   const email = { name: 'testowo' };
-  res.render('index', { urls, email });
+
+  const parser = new Parser();
+  const feed = await parser.parseURL('https://www.reddit.com/.rss');
+  const emailView = feedToHtml(feed);
+
+  res.render('index', { urls, email, emailView });
 });
 
 app.post('/save', async (req, res) => {
@@ -68,18 +130,19 @@ app.post('/save', async (req, res) => {
 });
 
 app.post('/send', async (req, res) => {
-  const msg = {
-    to: 'Antkowiak_57335@cloud.wsb.wroclaw.pl',
-    from: 'Antkowiak_57335@cloud.wsb.wroclaw.pl',
-    subject: 'Sending with Twilio SendGrid is Fun',
-    text: 'and easy to do anywhere, even with Node.js',
-    html: '<strong>and easy to do anywhere, even with Node.js</strong>',
-  };
-  try {
-    await sgMail.send(msg);
-  } catch (err) {
-    console.error(err.toString());
-  }
+  // const msg = {
+  //   to: 'Antkowiak_57335@cloud.wsb.wroclaw.pl',
+  //   from: 'Antkowiak_57335@cloud.wsb.wroclaw.pl',
+  //   subject: 'Sending with Twilio SendGrid is Fun',
+  //   text: 'and easy to do anywhere, even with Node.js',
+  //   html: '<strong>and easy to do anywhere, even with Node.js</strong>',
+  // };
+  // try {
+  //   await sgMail.send(msg);
+  // } catch (err) {
+  //   console.error(err.toString());
+  // }
+
   res.redirect('/');
 })
 
