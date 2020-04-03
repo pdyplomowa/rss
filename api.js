@@ -82,8 +82,11 @@ async function save(req, res) {
 
   const url = req.body.url && req.body.url.trim();
   if (url) {
-    const urlModel = createUrl({ name: url });
-    await urlModel.save({ upsert: true });
+    const existingUrls = await Url.find({ name: url }).exec();
+    if (existingUrls.length === 0) {
+      const urlModel = createUrl({ name: url });
+      await urlModel.save({ upsert: true });
+    }
   }
   res.redirect('/');
 }
